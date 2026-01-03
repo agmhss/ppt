@@ -86,7 +86,7 @@
             status.className = "mt-4 p-4 rounded-xl text-center font-bold bg-blue-100 text-blue-800 text-lg";
             status.innerText = "📄 PDF loaded – sending to Gemini...";
 
-            let countdown = 120; // Increased for safety
+            let countdown = 90;
             const timer = setInterval(() => {
                 countdown--;
                 if (countdown > 0) {
@@ -97,7 +97,7 @@
             try {
                 const genAI = new GoogleGenerativeAI(key);
 
-                // Current best fast multimodal model (as of Jan 2026): gemini-2.5-flash
+                // Use latest stable flash model for text/slide generation
                 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
                 const reader = new FileReader();
@@ -111,7 +111,7 @@
 For each slide, provide:
 - "title": short fun title
 - "bulletPoints": array of 3–5 short, simple bullet points
-- "imagePrompt": a highly detailed, vivid prompt for a colorful, fun, kid-friendly illustration that perfectly matches the slide content (include style: cartoon, bright colors, happy characters)
+- "imagePrompt": a detailed, vivid prompt for a colorful, fun, kid-friendly illustration that perfectly matches the slide content (e.g., "cartoon of happy kids exploring a volcano with lava and rocks, bright colors")
 
 Return ONLY pure valid JSON array of objects. No markdown, no extra text.`;
 
@@ -123,7 +123,7 @@ Return ONLY pure valid JSON array of objects. No markdown, no extra text.`;
                         clearInterval(timer);
 
                         const responseText = result.response.text();
-                        const cleaned = responseText.trim().replace(/^```json\s*/i, '').replace(/\s*```$/g, '').trim();
+                        const cleaned = responseText.trim().replace(/^```json:disable-run
 
                         finalSlides = JSON.parse(cleaned);
 
@@ -131,7 +131,8 @@ Return ONLY pure valid JSON array of objects. No markdown, no extra text.`;
                             throw new Error("No slides returned.");
                         }
 
-                        status.innerText = "✅ Slides created! Generating beautiful kid-friendly images... (30–120s)";
+                        // Generate images using a dedicated image model
+                        status.innerText = "✅ Slides created! Generating beautiful images for each slide... (30–90s)";
                         await generateImages(genAI);
 
                         renderEditor();
@@ -139,11 +140,11 @@ Return ONLY pure valid JSON array of objects. No markdown, no extra text.`;
                         document.getElementById('editor-view').classList.remove('hidden');
 
                         status.className = "mt-4 p-4 rounded-xl text-center font-bold bg-green-100 text-green-800 text-lg";
-                        status.innerText = "🎉 All done! Your slides with AI-generated images are ready. Download the PDF!";
+                        status.innerText = "🎉 All done! Your slides with images are ready.";
                     } catch (err) {
                         clearInterval(timer);
                         console.error(err);
-                        alert("Error: " + (err.message || "Something went wrong. Try a smaller page range or check your API key."));
+                        alert("Error: " + (err.message || "Something went wrong during processing."));
                     } finally {
                         btn.disabled = false;
                         btn.innerText = "✨ CREATE MY LESSON!";
@@ -159,9 +160,10 @@ Return ONLY pure valid JSON array of objects. No markdown, no extra text.`;
         };
 
         async function generateImages(genAI) {
-            // Current image generation model (Jan 2026): gemini-2.5-flash-image
+            // Use the current image generation model (as of Jan 2026)
             const imgModel = genAI.getGenerativeModel({ 
-                model: "gemini-2.5-flash-image"
+                model: "gemini-2.5-flash-image",
+                generationConfig: { responseMimeType: "image/png" }
             });
 
             for (let i = 0; i < finalSlides.length; i++) {
@@ -169,23 +171,23 @@ Return ONLY pure valid JSON array of objects. No markdown, no extra text.`;
                 if (!slide.imagePrompt) continue;
 
                 try {
-                    const imgResult = await imgModel.generateContent(slide.imagePrompt);
+                    const imgResult = await imgModel.generateContent(
+                        "Generate a colorful, fun, kid-friendly illustration: " + slide.imagePrompt
+                    );
 
-                    // Extract image from response parts
-                    const parts = imgResult.response.candidates?.[0]?.content?.parts || [];
-                    const imgPart = parts.find(p => p.inlineData && p.inlineData.mimeType?.startsWith('image/'));
-
+                    // Extract the first image part
+                    const imgPart = imgResult.response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
                     if (imgPart?.inlineData) {
                         slide.imageData = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
                     } else {
                         slide.imageData = null;
                     }
                 } catch (e) {
-                    console.warn(`Image generation failed for slide ${i+1}:`, e);
+                    console.warn(`Image failed for slide ${i+1}:`, e);
                     slide.imageData = null;
                 }
 
-                // Live update preview
+                // Update preview live
                 const previewImg = document.getElementById(`preview-img-${i}`);
                 const placeholder = document.getElementById(`placeholder-${i}`);
                 if (previewImg && slide.imageData) {
@@ -211,8 +213,8 @@ Return ONLY pure valid JSON array of objects. No markdown, no extra text.`;
                                       oninput="finalSlides[${i}].bulletPoints = this.value.split('\\n').filter(l => l.trim())">${(s.bulletPoints || []).join('\n')}</textarea>
                         </div>
                         <div class="flex flex-col items-center justify-center bg-gray-100 rounded-2xl overflow-hidden min-h-96">
-                            <p id="placeholder-${i}" class="text-gray-500 italic ${s.imageData ? 'hidden' : ''}">Generating image...</p>
-                            <img id="preview-img-${i}" src="${s.imageData || ''}" class="${s.imageData ? '' : 'hidden'} w-full h-full object-contain" alt="Kid-friendly illustration">
+                            <p id="placeholder-${i}" class="text-gray-500 italic">Generating image...</p>
+                            <img id="preview-img-${i}" src="${s.imageData || ''}" class="${s.imageData ? '' : 'hidden'} w-full h-full object-contain" alt="Slide illustration">
                         </div>
                     </div>
                 </div>
@@ -225,29 +227,30 @@ Return ONLY pure valid JSON array of objects. No markdown, no extra text.`;
             return div.innerHTML;
         }
 
-        // Reliable PDF Download via browser print
+        // PDF Download (browser print → Save as PDF)
         document.getElementById('download-pdf-btn').onclick = () => {
+            // Hide editor temporarily
             document.getElementById('editor-view').classList.add('hidden');
 
             const printContainer = document.createElement('div');
-            printContainer.style.padding = '60px';
+            printContainer.style.padding = '40px';
             printContainer.style.background = 'white';
             printContainer.style.fontFamily = 'sans-serif';
 
             finalSlides.forEach((s, i) => {
                 const page = document.createElement('div');
                 page.style.pageBreakAfter = 'always';
-                page.style.marginBottom = '100px';
+                page.style.marginBottom = '80px';
                 page.style.maxWidth = '900px';
                 page.style.margin = '0 auto';
 
                 page.innerHTML = `
-                    <h1 style="font-size: 52px; color: #1E40AF; text-align: center; margin-bottom: 50px;">${escapeHtml(s.title || 'Untitled Slide')}</h1>
-                    ${s.imageData ? `<div style="text-align: center; margin: 50px 0;"><img src="${s.imageData}" style="max-width: 85%; max-height: 550px; border-radius: 25px; box-shadow: 0 15px 40px rgba(0,0,0,0.25);"></div>` : '<p style="text-align: center; color: #999; font-style: italic;">(No image generated)</p>'}
-                    <ul style="font-size: 34px; line-height: 1.9; max-width: 820px; margin: 0 auto; padding-left: 70px;">
+                    <h1 style="font-size: 48px; color: #1E40AF; text-align: center; margin-bottom: 40px;">${escapeHtml(s.title || 'Untitled')}</h1>
+                    ${s.imageData ? `<div style="text-align: center; margin: 40px 0;"><img src="${s.imageData}" style="max-width: 80%; max-height: 500px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);"></div>` : ''}
+                    <ul style="font-size: 32px; line-height: 1.8; max-width: 800px; margin: 0 auto; padding-left: 60px;">
                         ${(s.bulletPoints || []).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
                     </ul>
-                    <div style="text-align: center; margin-top: 100px; color: #888; font-size: 20px;">Slide ${i+1} • Created with Lesson AI Explorer</div>
+                    <div style="text-align: center; margin-top: 80px; color: #888; font-size: 18px;">Slide ${i+1} • Created with Lesson AI Explorer</div>
                 `;
                 printContainer.appendChild(page);
             });
@@ -256,6 +259,7 @@ Return ONLY pure valid JSON array of objects. No markdown, no extra text.`;
             window.print();
             document.body.removeChild(printContainer);
 
+            // Show editor again
             document.getElementById('editor-view').classList.remove('hidden');
         };
     </script>
