@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GTK Slides (PPT) Maker v6 - ULTRA FAST ⚡</title>
+    <title>GTK Slides Maker v6.1 – Ultra Fast ⚡</title>
     <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
@@ -13,310 +13,422 @@
         }
     }
     </script>
+
+    <style>
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 12mm 15mm;
+            }
+
+            body {
+                margin: 0;
+                padding: 0;
+                visibility: hidden;
+            }
+
+            #print-container {
+                display: block !important;
+            }
+
+            .print-page {
+                page-break-after: always;
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                padding: 2.2cm 2.8cm;
+                box-sizing: border-box;
+                background: white;
+            }
+
+            .print-page:last-child {
+                page-break-after: avoid;
+            }
+
+            .print-title {
+                font-size: 48px;
+                font-weight: bold;
+                color: #065f46;
+                text-align: center;
+                margin: 0 0 0.9em 0;
+                line-height: 1.1;
+            }
+
+            .print-image {
+                max-width: 48%;
+                max-height: 52vh;
+                object-fit: contain;
+                margin: 1.4em auto;
+                border-radius: 12px;
+            }
+
+            .print-bullets {
+                font-size: 26px;
+                line-height: 1.55;
+                list-style: none;
+                padding-left: 2.2em;
+                max-width: 92%;
+                margin: 1em auto 0;
+            }
+
+            .print-bullets li {
+                margin-bottom: 0.65em;
+                position: relative;
+            }
+
+            .print-bullets li::before {
+                content: "•";
+                position: absolute;
+                left: -1.6em;
+                color: #065f46;
+            }
+
+            .print-footer {
+                text-align: center;
+                color: #9ca3af;
+                font-size: 15px;
+                margin-top: 1.2em;
+            }
+        }
+
+        .slide-preview-img {
+            loading: lazy;
+            decoding: async;
+            background: #f1f5f9;
+            transition: opacity 0.4s ease-in;
+        }
+    </style>
 </head>
 <body class="bg-sky-50 p-4 md:p-10 font-sans min-h-screen">
-    <div class="max-w-4xl mx-auto bg-white shadow-2xl rounded-3xl overflow-hidden border-8 border-white">
-        
-        <header class="bg-gradient-to-r from-emerald-500 to-teal-600 p-8 text-white text-center">
-            <h1 class="text-4xl font-black uppercase tracking-tighter">🚀 GTK Slides v6 - ULTRA FAST</h1>
-            <p class="text-emerald-100 mt-2 font-medium">Instant previews + 1-click real images! ⚡</p>
-        </header>
 
-        <section id="setup-view" class="p-8 space-y-8">
-            <div class="bg-yellow-50 p-6 rounded-2xl border-2 border-yellow-200">
-                <label class="block text-yellow-800 font-bold mb-2">🔑 Step 1: Paste Gemini API Key</label>
-                <input type="password" id="api-key-input" placeholder="AIzaSy..." class="w-full p-4 rounded-xl border-none ring-2 ring-yellow-200 focus:ring-yellow-400 shadow-inner">
+<div class="max-w-4xl mx-auto bg-white shadow-2xl rounded-3xl overflow-hidden border-8 border-white">
+
+    <header class="bg-gradient-to-r from-emerald-500 to-teal-600 p-8 text-white text-center">
+        <h1 class="text-4xl font-black uppercase tracking-tighter">🚀 GTK Slides v6.1 – ULTRA FAST</h1>
+        <p class="text-emerald-100 mt-2 font-medium">Instant preview + real AI images in one click ⚡</p>
+    </header>
+
+    <section id="setup-view" class="p-8 space-y-8">
+        <div class="bg-yellow-50 p-6 rounded-2xl border-2 border-yellow-200">
+            <label class="block text-yellow-800 font-bold mb-2">🔑 Step 1: Gemini API Key</label>
+            <input type="password" id="api-key-input" placeholder="AIzaSy..." class="w-full p-4 rounded-xl border-none ring-2 ring-yellow-200 focus:ring-yellow-400 shadow-inner">
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="p-6 bg-blue-50 rounded-2xl border-2 border-blue-100">
+                <label class="block text-blue-800 font-bold mb-2">📄 Step 2: Textbook PDF</label>
+                <input type="file" id="pdf-file" accept="application/pdf" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
             </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="p-6 bg-blue-50 rounded-2xl border-2 border-blue-100">
-                    <label class="block text-blue-800 font-bold mb-2">📄 Step 2: Textbook PDF</label>
-                    <input type="file" id="pdf-file" accept="application/pdf" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
-                </div>
-                <div class="p-6 bg-green-50 rounded-2xl border-2 border-green-100">
-                    <label class="block text-green-800 font-bold mb-2">📖 Step 3: Pages</label>
-                    <div class="flex gap-4">
-                        <input type="number" id="pg-start" placeholder="Start" min="1" class="w-1/2 p-2 rounded-lg border-green-200 focus:ring-2 focus:ring-green-400">
-                        <input type="number" id="pg-end" placeholder="End" min="1" class="w-1/2 p-2 rounded-lg border-green-200 focus:ring-2 focus:ring-green-400">
-                    </div>
-                </div>
-            </div>
-
-            <button id="main-action-btn" class="w-full py-5 bg-emerald-600 text-white rounded-2xl font-black text-2xl shadow-xl hover:bg-emerald-700 transition transform active:scale-95">
-                ✨ CREATE SLIDES INSTANTLY! (3s)
-            </button>
-            <div id="status-message" class="hidden mt-4 p-4 rounded-xl text-center font-bold text-lg"></div>
-        </section>
-
-        <section id="editor-view" class="hidden p-8 bg-gray-50 border-t-4 border-emerald-100">
-            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
-                <h2 class="text-3xl font-bold text-gray-800 italic">✨ Your Slides Ready! (Instant)</h2>
-                <div class="flex flex-wrap gap-3 items-center">
-                    <button id="generate-all-images" class="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-bold text-lg shadow-xl transition-all">
-                        🖼️ Generate All Images (2min)
-                    </button>
-                    <button id="download-pptx-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-2xl font-black text-xl shadow-lg flex items-center gap-2">
-                        📥 DOWNLOAD PPTX <span id="pptx-progress" class="hidden bg-emerald-200 px-2 py-1 rounded-full text-xs font-bold ml-1">0%</span>
-                    </button>
-                    <button id="download-pdf-btn" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-2xl font-black text-xl shadow-lg">
-                        📄 DOWNLOAD PDF
-                    </button>
+            <div class="p-6 bg-green-50 rounded-2xl border-2 border-green-100">
+                <label class="block text-green-800 font-bold mb-2">📖 Step 3: Pages (optional)</label>
+                <div class="flex gap-4">
+                    <input type="number" id="pg-start" placeholder="Start (1)" min="1" class="w-1/2 p-2 rounded-lg border-green-200 focus:ring-2 focus:ring-green-400">
+                    <input type="number" id="pg-end" placeholder="End" min="1" class="w-1/2 p-2 rounded-lg border-green-200 focus:ring-2 focus:ring-green-400">
                 </div>
             </div>
-            <div id="slide-editor-container" class="space-y-8"></div>
-        </section>
-    </div>
+        </div>
 
-    <script type="module">
-        import { GoogleGenerativeAI } from "@google/generative-ai";
+        <button id="main-action-btn" class="w-full py-5 bg-emerald-600 text-white rounded-2xl font-black text-2xl shadow-xl hover:bg-emerald-700 transition transform active:scale-95">
+            ✨ CREATE SLIDES INSTANTLY!
+        </button>
 
-        let finalSlides = [];
-        let genAI = null;
-        let statusEl = document.getElementById('status-message');
+        <div id="status-message" class="hidden mt-4 p-4 rounded-xl text-center font-bold text-lg"></div>
+    </section>
 
-        // INSTANT PLACEHOLDER IMAGES - No API calls needed
-        const getInstantImage = (title, index) => {
-            const themes = [
-                'happy cartoon children learning together in bright classroom',
-                'colorful animated animals teaching lesson with big smiles', 
-                'vibrant kids exploring science with excited expressions',
-                'cute cartoon characters studying books with rainbow background',
-                'playful children discovering nature with magical sparkles'
-            ];
-            return `https://images.unsplash.com/photo-${Math.floor(Math.random()*1500)}?w=600&h=400&fit=crop&ixlib=rb-4.0.3&q=80&blur=10&${title.slice(0,10)}`;
-        };
+    <section id="editor-view" class="hidden p-8 bg-gray-50 border-t-4 border-emerald-100">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
+            <h2 class="text-3xl font-bold text-gray-800 italic">✨ Your Slides – Ready!</h2>
+            <div class="flex flex-wrap gap-3 items-center">
+                <button id="generate-all-images" class="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-bold text-lg shadow-xl transition-all">
+                    🖼️ Generate Real Images
+                </button>
+                <button id="download-pptx-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-2xl font-black text-xl shadow-lg flex items-center gap-2">
+                    📥 PPTX <span id="pptx-progress" class="hidden bg-emerald-200 px-2 py-1 rounded-full text-xs font-bold ml-1">0%</span>
+                </button>
+                <button id="download-pdf-btn" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-2xl font-black text-xl shadow-lg">
+                    📄 PDF (Landscape)
+                </button>
+            </div>
+        </div>
 
-        document.getElementById('main-action-btn').onclick = async () => {
-            const key = document.getElementById('api-key-input').value.trim();
-            const file = document.getElementById('pdf-file').files[0];
-            
-            if (!key) return alert("Please paste your Gemini API key!");
-            if (!file) return alert("Please select a PDF file!");
+        <div id="slide-editor-container" class="space-y-10"></div>
+    </section>
+</div>
 
-            const btn = document.getElementById('main-action-btn');
-            btn.disabled = true;
-            btn.innerText = "⚡ Instant...";
-            showStatus("📄 Analyzing PDF with Gemini...", "blue");
+<script type="module">
+    import { GoogleGenerativeAI } from "@google/generative-ai";
+
+    let genAI = null;
+    let finalSlides = [];
+    const statusEl = document.getElementById('status-message');
+
+    // Fast loading placeholders (smaller resolution + stable)
+    const getInstantImage = (title, index) => {
+        const seeds = ['kids-learning-fun', 'cartoon-animals-class', 'children-science-magic', 'colorful-study-rainbow', 'nature-kids-adventure'];
+        const seed = seeds[index % seeds.length];
+        return `https://images.unsplash.com/photo-1503454537195-1dcabb9d2a9d?w=480&h=320&fit=crop&crop=faces&auto=format&q=60&ixlib=rb-4.0.3&seed=${seed}`;
+    };
+
+    function showStatus(text, color = "blue") {
+        statusEl.className = `mt-4 p-4 rounded-xl text-center font-bold bg-${color}-100 text-${color}-800 text-lg`;
+        statusEl.textContent = text;
+        statusEl.classList.remove('hidden');
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    document.getElementById('main-action-btn').onclick = async () => {
+        const key = document.getElementById('api-key-input').value.trim();
+        const file = document.getElementById('pdf-file').files[0];
+
+        if (!key) return alert("Please enter your Gemini API key!");
+        if (!file) return alert("Please select a PDF file!");
+
+        const btn = document.getElementById('main-action-btn');
+        btn.disabled = true;
+        btn.textContent = "Analyzing PDF...";
+
+        showStatus("📄 Reading & analyzing PDF with Gemini...", "blue");
+
+        try {
+            genAI = new GoogleGenerativeAI(key);
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+            const reader = new FileReader();
+            reader.onload = async () => {
+                try {
+                    const base64Data = reader.result.split(',')[1];
+                    const start = document.getElementById('pg-start').value || 1;
+                    const end = document.getElementById('pg-end').value || '';
+
+                    const rangeText = end ? `pages ${start}-${end}` : `starting from page ${start}`;
+                    const prompt = `Analyze this children's textbook PDF (${rangeText}). 
+Create 8–14 educational slides suitable for kids 8–12 years old.
+Return ONLY valid JSON array of objects with exactly these keys: 
+"title" (short & catchy), "bulletPoints" (array of 4–7 short sentences), "imagePrompt" (vivid description for image generation)`;
+
+                    const result = await model.generateContent([
+                        { inlineData: { mimeType: "application/pdf", data: base64Data } },
+                        { text: prompt }
+                    ]);
+
+                    let text = await result.response.text();
+                    text = text.replace(/^```json\s*/i, '').replace(/\s*```$/g, '').trim();
+
+                    finalSlides = JSON.parse(text);
+
+                    // Add instant preview images
+                    finalSlides.forEach((slide, i) => {
+                        slide.imageData = getInstantImage(slide.title, i);
+                        slide.imageStatus = 'placeholder';
+                    });
+
+                    renderSlides();
+                    document.getElementById('setup-view').classList.add('hidden');
+                    document.getElementById('editor-view').classList.remove('hidden');
+
+                    showStatus("✅ Slides ready in seconds! Click 'Generate Real Images' for beautiful AI illustrations.", "emerald");
+                } catch (err) {
+                    alert("Processing error: " + err.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = "✨ CREATE SLIDES INSTANTLY!";
+                }
+            };
+            reader.readAsDataURL(file);
+        } catch (err) {
+            alert("API connection error: " + err.message);
+            btn.disabled = false;
+            btn.textContent = "✨ CREATE SLIDES INSTANTLY!";
+        }
+    };
+
+    // Generate real AI images
+    document.getElementById('generate-all-images').onclick = async () => {
+        if (!genAI) return alert("Please create slides first!");
+
+        const btn = document.getElementById('generate-all-images');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "Generating images...";
+
+        showStatus("🖼️ Generating beautiful images with Gemini...", "indigo");
+
+        const imgModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+
+        for (let i = 0; i < finalSlides.length; i++) {
+            const slide = finalSlides[i];
+            if (!slide.imagePrompt) continue;
+
+            btn.textContent = `Generating ${i+1}/${finalSlides.length}...`;
 
             try {
-                genAI = new GoogleGenerativeAI(key);
-                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+                const result = await imgModel.generateContent([
+                    slide.imagePrompt + "\nStyle: vibrant, colorful, cartoonish, friendly, suitable for children 8-12 years old, high quality, clear illustration"
+                ]);
 
-                const reader = new FileReader();
-                reader.onload = async () => {
-                    try {
-                        const base64Data = reader.result.split(',')[1];
-                        const start = document.getElementById('pg-start').value || 1;
-                        const end = document.getElementById('pg-end').value || 10;
+                const parts = result.response.candidates?.[0]?.content?.parts;
+                const imgData = parts?.find(p => p.inlineData)?.inlineData;
 
-                        const prompt = `Analyze this textbook PDF (pages ${start}-${end}). Create 8–12 slides for kids 8-12.
-Return ONLY valid JSON array with: title, bulletPoints[], imagePrompt`;
-
-                        const result = await model.generateContent([
-                            { inlineData: { mimeType: "application/pdf", data: base64Data } },
-                            { text: prompt }
-                        ]);
-
-                        const responseText = await result.response.text();
-                        const cleaned = responseText.trim().replace(/^```json\s*/i, '').replace(/\s*```$/g, '').trim();
-                        finalSlides = JSON.parse(cleaned);
-
-                        // ADD INSTANT PLACEHOLDER IMAGES
-                        finalSlides.forEach((slide, i) => {
-                            slide.imageData = getInstantImage(slide.title, i);
-                            slide.imageStatus = 'placeholder'; // Track status
-                        });
-
-                        renderEditor();
-                        document.getElementById('setup-view').classList.add('hidden');
-                        document.getElementById('editor-view').classList.remove('hidden');
-                        
-                        showStatus("✅ SLIDES READY INSTANTLY! (3s total) ✨ Click 'Generate All Images' for real AI images.", "emerald");
-                        setTimeout(() => statusEl.classList.add('hidden'), 4000);
-                        
-                    } catch (err) {
-                        alert("Error: " + err.message);
-                    } finally {
-                        btn.disabled = false;
-                        btn.innerText = "✨ CREATE SLIDES INSTANTLY!";
-                    }
-                };
-                reader.readAsDataURL(file);
-            } catch (err) {
-                alert("API Error: " + err.message);
-                btn.disabled = false;
-                btn.innerText = "✨ CREATE SLIDES INSTANTLY!";
-            }
-        };
-
-        // ONE-CLICK REAL IMAGE GENERATION
-        document.getElementById('generate-all-images').onclick = async () => {
-            if (!genAI) return alert("Create slides first!");
-            
-            const btn = document.getElementById('generate-all-images');
-            const originalText = btn.innerText;
-            btn.disabled = true;
-            btn.innerText = "🖼️ Generating... 0%";
-            
-            const imgModel = genAI.getGenerativeModel({ model: "gemini-2.5-pro-exp-image" });
-            
-            for (let i = 0; i < finalSlides.length; i++) {
-                const slide = finalSlides[i];
-                if (!slide.imagePrompt) continue;
-                
-                try {
-                    btn.innerText = `🖼️ Generating... ${i+1}/${finalSlides.length}`;
-                    const result = await imgModel.generateContent([slide.imagePrompt, { 
-                        generationConfig: { responseMimeType: "image/png" } 
-                    }]);
-                    
-                    const imgData = result.response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
-                    if (imgData) {
-                        slide.imageData = `data:${imgData.mimeType};base64,${imgData.data}`;
-                        slide.imageStatus = 'generated';
-                        updatePreview(i);
-                    }
-                } catch (e) {
-                    console.warn('Image gen failed:', e);
+                if (imgData) {
+                    slide.imageData = `data:${imgData.mimeType};base64,${imgData.data}`;
+                    slide.imageStatus = 'generated';
+                    updatePreview(i);
                 }
+            } catch (e) {
+                console.warn('Image generation failed for slide', i+1, e);
             }
-            
-            btn.disabled = false;
-            btn.innerText = "✅ All Images Generated!";
-            setTimeout(() => btn.innerText = originalText, 3000);
-        };
-
-        function showStatus(text, color = "blue") {
-            statusEl.className = `mt-4 p-4 rounded-xl text-center font-bold bg-${color}-100 text-${color}-800 text-lg`;
-            statusEl.innerText = text;
-            statusEl.classList.remove('hidden');
         }
 
-        function renderEditor() {
-            const container = document.getElementById('slide-editor-container');
-            container.innerHTML = finalSlides.map((s, i) => `
-                <div class="bg-white p-8 rounded-3xl border-4 border-emerald-100 shadow-2xl relative overflow-hidden">
-                    <div class="absolute top-0 right-0 p-3 bg-emerald-100 text-emerald-700 font-bold text-sm rounded-bl-xl">
-                        Slide ${i+1}/${finalSlides.length} 
-                        <span class="ml-1 px-2 py-0.5 bg-yellow-200 text-xs rounded-full">${s.imageStatus || 'ready'}</span>
+        btn.disabled = false;
+        btn.textContent = "✅ All images generated!";
+        showStatus("🎉 All images are ready!", "emerald");
+        setTimeout(() => btn.textContent = originalText, 3000);
+    };
+
+    function renderSlides() {
+        const container = document.getElementById('slide-editor-container');
+        container.innerHTML = finalSlides.map((s, i) => `
+            <div class="bg-white p-8 rounded-3xl border-4 border-emerald-100 shadow-xl relative">
+                <div class="absolute top-0 right-0 px-4 py-2 bg-emerald-100 text-emerald-800 font-bold text-sm rounded-bl-xl">
+                    Slide ${i+1} • ${s.imageStatus === 'generated' ? 'AI' : 'Preview'}
+                </div>
+
+                <input class="w-full text-3xl font-black text-gray-800 mb-6 p-3 rounded-xl border-2 border-gray-200 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 outline-none"
+                       value="${escapeHtml(s.title || '')}" 
+                       oninput="finalSlides[${i}].title = this.value">
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-600 mb-3">Bullet Points (one per line)</label>
+                        <textarea class="w-full h-56 p-4 bg-gradient-to-b from-gray-50 to-gray-100 rounded-2xl text-gray-800 text-lg border-2 border-gray-200 focus:ring-4 focus:ring-emerald-200 outline-none resize-none"
+                                  oninput="finalSlides[${i}].bulletPoints = this.value.split('\\n').filter(l => l.trim())">${(s.bulletPoints || []).join('\n')}</textarea>
                     </div>
-                    
-                    <input class="w-full text-3xl font-black text-gray-800 mb-6 p-3 rounded-xl focus:outline-none border-2 border-gray-200 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100" 
-                           value="${escapeHtml(s.title || '')}" oninput="finalSlides[${i}].title = this.value">
-                    
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div>
-                            <label class="block text-sm font-bold text-gray-600 mb-3">📝 Bullet Points</label>
-                            <textarea class="w-full h-48 p-4 bg-gradient-to-b from-gray-50 to-gray-100 rounded-2xl text-gray-800 text-lg font-medium focus:ring-4 focus:ring-emerald-200 outline-none resize-none border-2 border-gray-200" 
-                                      placeholder="One bullet point per line...">${(s.bulletPoints || []).join('\n')}</textarea>
-                                      oninput="finalSlides[${i}].bulletPoints = this.value.split('\\n').filter(l => l.trim())"
-                            </textarea>
-                        </div>
-                        
-                        <div class="flex flex-col items-center bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-6 border-2 border-emerald-200 min-h-[320px]">
-                            <img id="preview-img-${i}" src="${s.imageData || ''}" class="w-full max-h-64 object-contain rounded-xl shadow-lg ${s.imageData ? '' : 'hidden'}" alt="Slide image">
-                            <div class="${s.imageData ? 'hidden' : 'flex flex-col items-center pt-8'}">
-                                <div class="w-20 h-20 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-xl mb-3">
-                                    <span class="text-white font-bold text-2xl">⚡</span>
-                                </div>
-                                <p class="text-sm font-medium text-gray-600 text-center">Instant Preview Ready!</p>
+
+                    <div class="flex flex-col items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-6 border-2 border-emerald-200 min-h-[360px]">
+                        <img id="preview-${i}"
+                             src="${s.imageData || ''}"
+                             class="slide-preview-img w-full max-h-72 object-contain rounded-xl shadow-lg transition-opacity ${s.imageData ? '' : 'opacity-0'}"
+                             alt="Illustration"
+                             loading="lazy"
+                             decoding="async"
+                             onerror="this.src='https://placehold.co/600x400/94a3b8/fff/png?text=Image+Error';this.classList.remove('opacity-0')">
+
+                        <div class="${s.imageData ? 'hidden' : 'mt-6 text-center'}">
+                            <div class="w-20 h-20 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-xl mb-4 animate-pulse mx-auto">
+                                <span class="text-white text-3xl">⚡</span>
                             </div>
+                            <p class="text-gray-600 font-medium">Fast preview ready!</p>
                         </div>
                     </div>
                 </div>
-            `).join('');
+            </div>
+        `).join('');
+    }
+
+    function updatePreview(index) {
+        const img = document.getElementById(`preview-${index}`);
+        if (img && finalSlides[index]?.imageData) {
+            img.src = finalSlides[index].imageData;
+            img.classList.remove('opacity-0');
         }
+    }
 
-        function updatePreview(i) {
-            const img = document.getElementById(`preview-img-${i}`);
-            const placeholder = img.nextElementSibling;
-            if (img && finalSlides[i].imageData) {
-                img.src = finalSlides[i].imageData;
-                img.classList.remove('hidden');
-                placeholder?.classList.add('hidden');
-                document.querySelector(`[data-slide="${i}"] .status`)?.textContent('generated');
-            }
-        }
+    // ── PPTX Export ────────────────────────────────────────────────────────────
+    document.getElementById('download-pptx-btn').onclick = async () => {
+        const progress = document.getElementById('pptx-progress');
+        progress.classList.remove('hidden');
+        progress.textContent = '0%';
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+        const pptx = new PptxGenJS();
+        pptx.layout = 'LAYOUT_WIDE';
 
-        // OPTIMIZED PPTX - Works with placeholders perfectly
-        document.getElementById('download-pptx-btn').onclick = async () => {
-            const progressEl = document.getElementById('pptx-progress');
-            progressEl.classList.remove('hidden');
-            
-            let pptx = new PptxGenJS();
-            pptx.layout = 'LAYOUT_WIDE';
+        for (let i = 0; i < finalSlides.length; i++) {
+            const s = finalSlides[i];
+            const slide = pptx.addSlide({ background: { color: "F0FDF4" } });
 
-            for (let i = 0; i < finalSlides.length; i++) {
-                const s = finalSlides[i];
-                const slide = pptx.addSlide();
-                slide.background = { color: "F0FDF4" };
-
-                slide.addText(s.title || "Slide", {
-                    x: 0.5, y: 0.5, w: 9, h: 1.2,
-                    fontSize: 38, bold: true, color: "166534", align: "center"
-                });
-
-                const bullets = (s.bulletPoints || []).slice(0, 6).filter(b => b.trim());
-                if (bullets.length) {
-                    slide.addText(bullets.map(b => `• ${b}`), {
-                        x: 0.8, y: 2.0, w: 8, h: 3.5,
-                        fontSize: 24, color: "374151", bullet: true
-                    });
-                }
-
-                // Image always works (placeholder OR generated)
-                if (s.imageData) {
-                    slide.addImage({
-                        data: s.imageData,
-                        x: 0.3, y: 2.0, w: 3.8, h: 3.8,
-                        sizing: { type: 'contain', w: 3.8, h: 3.8 }
-                    });
-                }
-
-                slide.addText(`Slide ${i+1} • GTK Slides Maker ❤️`, {
-                    x: 0.5, y: 6.5, w: 9, h: 0.5,
-                    fontSize: 14, color: "6B7280", align: "center"
-                });
-
-                progressEl.textContent = `${Math.round((i+1)/finalSlides.length*100)}%`;
-                await new Promise(r => setTimeout(r, 20));
-            }
-
-            progressEl.textContent = '💾 Saving...';
-            pptx.writeFile({ fileName: `GTK_Lesson_${new Date().getDate()}.pptx` });
-            setTimeout(() => progressEl.classList.add('hidden'), 2000);
-        };
-
-        document.getElementById('download-pdf-btn').onclick = () => {
-            // PDF print unchanged from previous version
-            const printContainer = document.createElement('div');
-            printContainer.style.cssText = 'padding:40px;background:white;font-family:Arial,sans-serif;';
-            finalSlides.forEach((s, i) => {
-                const page = document.createElement('div');
-                page.style.cssText = 'page-break-after:always;margin-bottom:60px;';
-                page.innerHTML = `
-                    <h1 style="font-size:44px;color:#166534;text-align:center;margin:0 0 40px 0;">${escapeHtml(s.title)}</h1>
-                    ${s.imageData ? `<img src="${s.imageData}" style="width:45%;max-height:350px;margin:30px auto;display:block;border-radius:20px;">` : ''}
-                    <ul style="font-size:26px;line-height:1.7;max-width:800px;margin:20px auto;padding-left:30px;">
-                        ${(s.bulletPoints || []).slice(0,8).map(b => `<li style="margin-bottom:12px;">${escapeHtml(b)}</li>`).join('')}
-                    </ul>
-                    <div style="text-align:center;margin-top:60px;color:#888;font-size:16px;">Slide ${i+1} • GTK Slides Maker</div>
-                `;
-                printContainer.appendChild(page);
+            slide.addText(s.title || "Slide Title", {
+                x: 0.6, y: 0.6, w: 9, h: 1.4,
+                fontSize: 44, bold: true, color: "065F46", align: "center"
             });
-            document.body.appendChild(printContainer);
-            window.print();
-            setTimeout(() => {
-                document.body.removeChild(printContainer);
-                document.getElementById('editor-view').classList.remove('hidden');
-            }, 500);
-        };
-    </script>
+
+            const bullets = (s.bulletPoints || []).slice(0, 7);
+            if (bullets.length) {
+                slide.addText(bullets.map(b => `• ${b}`), {
+                    x: 0.9, y: 2.2, w: 8.2, h: 3.6,
+                    fontSize: 26, color: "1F2937", bullet: true, lineSpacing: 26
+                });
+            }
+
+            if (s.imageData) {
+                slide.addImage({
+                    data: s.imageData,
+                    x: 0.4, y: 2.0, w: 4.2, h: 4.2,
+                    sizing: { type: 'contain' }
+                });
+            }
+
+            slide.addText(`Slide ${i+1} • GTK Slides Maker`, {
+                x: 0.6, y: 6.8, w: 9, h: 0.5,
+                fontSize: 14, color: "6B7280", align: "center"
+            });
+
+            progress.textContent = `${Math.round((i+1)/finalSlides.length * 100)}%`;
+            await new Promise(r => setTimeout(r, 30));
+        }
+
+        progress.textContent = 'Saving...';
+        pptx.writeFile({ fileName: `GTK_Lesson_${new Date().toISOString().slice(0,10)}.pptx` });
+
+        setTimeout(() => progress.classList.add('hidden'), 1800);
+    };
+
+    // ── PDF Export (Landscape, one page per slide) ──────────────────────────────
+    document.getElementById('download-pdf-btn').onclick = () => {
+        const container = document.createElement('div');
+        container.id = 'print-container';
+
+        finalSlides.forEach((s, i) => {
+            const page = document.createElement('div');
+            page.className = 'print-page';
+
+            page.innerHTML = `
+                <div>
+                    <h1 class="print-title">${escapeHtml(s.title || 'Slide Title')}</h1>
+
+                    ${s.imageData ? `
+                        <img src="${s.imageData}" class="print-image" alt="Illustration">
+                    ` : `
+                        <div class="w-[48%] h-[50vh] mx-auto my-8 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400">
+                            Image Placeholder
+                        </div>
+                    `}
+
+                    <ul class="print-bullets">
+                        ${(s.bulletPoints || []).slice(0,8).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
+                    </ul>
+                </div>
+
+                <div class="print-footer">
+                    Slide ${i+1} / ${finalSlides.length} • Generated by GTK Slides Maker
+                </div>
+            `;
+
+            container.appendChild(page);
+        });
+
+        document.body.appendChild(container);
+        setTimeout(window.print, 400);
+
+        setTimeout(() => {
+            document.body.removeChild(container);
+        }, 2000);
+    };
+</script>
 </body>
 </html>
