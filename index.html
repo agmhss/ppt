@@ -7,7 +7,11 @@
     <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
-    { "imports": { "@google/genai": "https://esm.run/@google/genai" } }
+    {
+        "imports": {
+            "@google/generative-ai": "https://esm.run/@google/generative-ai"
+        }
+    }
     </script>
 </head>
 <body class="bg-sky-50 p-4 md:p-10 font-sans min-h-screen">
@@ -22,6 +26,7 @@
             <div class="bg-yellow-50 p-6 rounded-2xl border-2 border-yellow-200">
                 <label class="block text-yellow-800 font-bold mb-2">🔑 Step 1: Paste Gemini API Key</label>
                 <input type="password" id="api-key-input" placeholder="AIzaSy..." class="w-full p-4 rounded-xl border-none ring-2 ring-yellow-200 focus:ring-yellow-400 shadow-inner">
+                <p class="text-xs text-yellow-700 mt-2">Get your free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" class="underline">Google AI Studio</a></p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -30,17 +35,20 @@
                     <input type="file" id="pdf-file" accept="application/pdf" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
                 </div>
                 <div class="p-6 bg-green-50 rounded-2xl border-2 border-green-100">
-                    <label class="block text-green-800 font-bold mb-2">📖 Step 3: Pages</label>
+                    <label class="block text-green-800 font-bold mb-2">📖 Step 3: Pages (optional, default: first 10)</label>
                     <div class="flex gap-4">
-                        <input type="number" id="pg-start" value="1" class="w-1/2 p-2 rounded-lg border-green-200 focus:ring-2 focus:ring-green-400">
-                        <input type="number" id="pg-end" value="5" class="w-1/2 p-2 rounded-lg border-green-200 focus:ring-2 focus:ring-green-400">
+                        <input type="number" id="pg-start" placeholder="Start" min="1" class="w-1/2 p-2 rounded-lg border-green-200 focus:ring-2 focus:ring-green-400">
+                        <input type="number" id="pg-end" placeholder="End" min="1" class="w-1/2 p-2 rounded-lg border-green-200 focus:ring-2 focus:ring-green-400">
                     </div>
+                    <p class="text-xs text-green-700 mt-2">Leave blank for pages 1–10</p>
                 </div>
             </div>
 
             <button id="main-action-btn" class="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-2xl shadow-xl hover:bg-indigo-700 transition transform active:scale-95">
                 ✨ CREATE MY LESSON!
             </button>
+
+            <div id="status-message" class="hidden mt-4 p-4 rounded-xl text-center font-bold"></div>
         </section>
 
         <section id="editor-view" class="hidden p-8 bg-gray-50 border-t-4 border-indigo-100">
@@ -55,49 +63,97 @@
     </div>
 
     <script type="module">
-        import { GoogleGenAI } from "@google/genai";
+        import { GoogleGenerativeAI } from "@google/generative-ai";
 
         let finalSlides = [];
 
         document.getElementById('main-action-btn').onclick = async () => {
             const key = document.getElementById('api-key-input').value.trim();
             const file = document.getElementById('pdf-file').files[0];
-            const start = document.getElementById('pg-start').value;
-            const end = document.getElementById('pg-end').value;
+            let start = document.getElementById('pg-start').value.trim();
+            let end = document.getElementById('pg-end').value.trim();
 
-            if (!key) return alert("Please paste your API key!");
+            if (!key) return alert("Please paste your Gemini API key!");
             if (!file) return alert("Please select a PDF file!");
 
+            // Default pages if not specified
+            if (!start) start = "1";
+            if (!end) end = "10";
+
             const btn = document.getElementById('main-action-btn');
+            const status = document.getElementById('status-message');
             btn.disabled = true;
-            btn.innerText = "⏳ Gemini is reading your book...";
+            btn.innerText = "⏳ Processing...";
+            status.classList.add('hidden');
 
             try {
-                // INITIALIZE HERE TO CAPTURE THE KEY VALUE
-                const genAI = new GoogleGenAI(key);
+                const genAI = new GoogleGenerativeAI(key);
                 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
                 const reader = new FileReader();
-                reader.readAsDataURL(file);
                 reader.onload = async () => {
-                    const base64Data = reader.result.split(',')[1];
-                    
-                    const prompt = `Read pages ${start} to ${end} of this textbook. Generate 8-12 presentation slides for children. Return ONLY a JSON array of objects. Objects must have: title, bulletPoints (array of 3 strings), and youtubeSearch (string for video search).`;
+                    try {
+                        status.classList.remove('hidden');
+                        status.className = "mt-4 p-4 rounded-xl text-center font-bold bg-blue-100 text-blue-800";
+                        status.innerText = "📄 PDF loaded – sending to Gemini (this may take 30–60 seconds)...";
 
-                    const result = await model.generateContent([
-                        { inlineData: { data: base64Data, mimeType: "application/pdf" } },
-                        { text: prompt }
-                    ]);
+                        const base64Data = reader.result.split(',')[1];
 
-                    const responseText = result.response.text().replace(/```json|```/gi, "").trim();
-                    finalSlides = JSON.parse(responseText);
-                    
-                    renderEditor();
-                    document.getElementById('setup-view').classList.add('hidden');
-                    document.getElementById('editor-view').classList.remove('hidden');
+                        const pageInfo = start && end ? `pages ${start} to ${end}` : `the first ${end || 10} pages`;
+
+                        const prompt = `Analyze this textbook PDF (${pageInfo}). Extract key concepts and create 8–12 engaging presentation slides for children (ages 8–12).
+Return ONLY a valid JSON array of objects with exactly these fields:
+- "title": string (slide title)
+- "bulletPoints": array of 3–5 short strings (bullet points)
+- "youtubeSearch": string (suggested YouTube search term for a related kid-friendly video)
+
+Do not include any extra text, markdown, or code blocks.`;
+
+                        const result = await model.generateContent([
+                            {
+                                inlineData: {
+                                    mimeType: "application/pdf",
+                                    data: base64Data
+                                }
+                            },
+                            { text: prompt }
+                        ]);
+
+                        const responseText = result.response.text();
+
+                        // Clean possible markdown wrappers
+                        const cleaned = responseText.trim().replace(/^```json\n?|```$/gi, '').trim();
+
+                        finalSlides = JSON.parse(cleaned);
+
+                        if (!Array.isArray(finalSlides) || finalSlides.length === 0) {
+                            throw new Error("No slides generated – response format invalid.");
+                        }
+
+                        renderEditor();
+                        document.getElementById('setup-view').classList.add('hidden');
+                        document.getElementById('editor-view').classList.remove('hidden');
+
+                        status.classList.add('hidden');
+                    } catch (parseErr) {
+                        console.error(parseErr);
+                        alert("Gemini processed the PDF but returned invalid JSON. Try again or adjust page range.\n\nDetails: " + parseErr.message);
+                    } finally {
+                        btn.disabled = false;
+                        btn.innerText = "✨ CREATE MY LESSON!";
+                    }
                 };
+
+                reader.onerror = () => {
+                    alert("Error reading PDF file.");
+                    btn.disabled = false;
+                    btn.innerText = "✨ CREATE MY LESSON!";
+                };
+
+                reader.readAsDataURL(file);
             } catch (err) {
-                alert("Error: " + err.message);
+                console.error(err);
+                alert("Error: " + (err.message || "Unknown error – check API key or network."));
                 btn.disabled = false;
                 btn.innerText = "✨ CREATE MY LESSON!";
             }
@@ -106,27 +162,53 @@
         function renderEditor() {
             const container = document.getElementById('slide-editor-container');
             container.innerHTML = finalSlides.map((s, i) => `
-                <div class="bg-white p-6 rounded-3xl border-4 border-indigo-50 shadow-sm relative overflow-hidden">
-                    <div class="absolute top-0 right-0 p-2 bg-indigo-50 text-indigo-400 font-bold text-xs rounded-bl-xl">Slide ${i+1}</div>
+                <div class="bg-white p-6 rounded-3xl border-4 border-indigo-50 shadow-lg relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-2 bg-indigo-100 text-indigo-600 font-bold text-xs rounded-bl-xl">Slide ${i+1}</div>
                     <input class="w-full text-2xl font-black text-indigo-700 mb-4 focus:outline-none border-b-2 border-transparent focus:border-indigo-300" 
-                           value="${s.title}" oninput="finalSlides[${i}].title = this.value">
-                    <textarea class="w-full h-32 p-4 bg-gray-50 rounded-2xl text-gray-700 focus:ring-2 focus:ring-indigo-200 outline-none" 
-                              oninput="finalSlides[${i}].bulletPoints = this.value.split('\\n')">${s.bulletPoints.join('\n')}</textarea>
-                    <p class="mt-4 text-xs font-bold text-orange-500">🎬 VIDEO SEARCH: ${s.youtubeSearch}</p>
+                           value="${escapeHtml(s.title || '')}" oninput="finalSlides[${i}].title = this.value">
+                    <textarea class="w-full h-40 p-4 bg-gray-50 rounded-2xl text-gray-700 focus:ring-2 focus:ring-indigo-200 outline-none resize-none" 
+                              oninput="finalSlides[${i}].bulletPoints = this.value.split('\\n').filter(line => line.trim() !== '')">${(s.bulletPoints || []).join('\n')}</textarea>
+                    <p class="mt-4 text-sm font-bold text-orange-600">🎬 Suggested YouTube search: <span class="italic">${escapeHtml(s.youtubeSearch || '')}</span></p>
                 </div>
             `).join('');
         }
 
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         document.getElementById('download-btn').onclick = () => {
             let pptx = new PptxGenJS();
+            pptx.defineLayout({ name: 'A4', width: 10, height: 7.5 });
+
             finalSlides.forEach(s => {
                 let slide = pptx.addSlide();
                 slide.background = { color: "F0F9FF" };
-                slide.addText(s.title, { x: 0.5, y: 0.5, w: 9, h: 1, fontSize: 32, bold: true, color: "1E40AF", align: "center" });
-                slide.addText(s.bulletPoints.join('\n'), { x: 1, y: 1.8, w: 8, h: 3, fontSize: 20, color: "334155", bullet: true });
-                slide.addText("Watch: Search YouTube for " + s.youtubeSearch, { x: 0.5, y: 5.2, w: 9, h: 0.5, fontSize: 12, italic: true, color: "6366F1", align: "center" });
+
+                slide.addText(s.title || "Untitled Slide", {
+                    x: 0.5, y: 0.5, w: 9, h: 1.2,
+                    fontSize: 32, bold: true, color: "1E40AF", align: "center"
+                });
+
+                const bullets = (s.bulletPoints || []).filter(b => b.trim());
+                if (bullets.length > 0) {
+                    slide.addText(bullets.map(b => `• ${b}`), {
+                        x: 0.8, y: 2, w: 8.4, h: 3.5,
+                        fontSize: 20, color: "334155", bullet: { type: "bullet" }
+                    });
+                }
+
+                if (s.youtubeSearch) {
+                    slide.addText(`Watch on YouTube: Search for "${s.youtubeSearch}"`, {
+                        x: 0.5, y: 6.2, w: 9, h: 0.6,
+                        fontSize: 14, italic: true, color: "6366F1", align: "center"
+                    });
+                }
             });
-            pptx.writeFile({ fileName: "My_AI_Lesson.pptx" });
+
+            pptx.writeFile({ fileName: "Kid-Friendly_Lesson.pptx" });
         };
     </script>
 </body>
