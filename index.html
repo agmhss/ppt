@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Slide Creator - Multimodal AI</title>
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "@google/genai": "https://esm.run/@google/genai"
+      }
+    }
+    </script>
+</head>
+<body class="bg-indigo-50 min-h-screen p-4 md:p-8 font-sans">
+    <div class="max-w-4xl mx-auto bg-white shadow-2xl rounded-3xl overflow-hidden border-4 border-indigo-200">
+        
+        <header class="bg-indigo-600 p-6 text-white text-center">
+            <h1 class="text-3xl font-black italic uppercase tracking-widest">🚀 Gemini Lesson Lab</h1>
+            <p class="text-indigo-100 opacity-90">Transform textbooks into amazing kid-friendly slides</p>
+        </header>
+
+        <section id="setup-view" class="p-8 space-y-6">
+            <div class="space-y-4">
+                <label class="block">
+                    <span class="text-gray-700 font-bold">1. Enter Gemini API Key</span>
+                    <input type="password" id="api-key" placeholder="AIza..." class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 p-3 bg-gray-50">
+                    <p class="text-xs text-gray-400 mt-1">Your key is never stored; it only stays in your browser.</p>
+                </label>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label class="block">
+                        <span class="text-gray-700 font-bold">2. Upload Textbook PDF</span>
+                        <input type="file" id="pdf-input" accept="application/pdf" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+                    </label>
+                    <div class="flex gap-2 items-end">
+                        <div class="w-1/2">
+                            <span class="text-gray-700 font-bold text-sm">Start Page</span>
+                            <input type="number" id="page-from" value="1" class="w-full rounded-xl border-gray-300 p-2 bg-gray-50">
+                        </div>
+                        <div class="w-1/2">
+                            <span class="text-gray-700 font-bold text-sm">End Page</span>
+                            <input type="number" id="page-to" value="5" class="w-full rounded-xl border-gray-300 p-2 bg-gray-50">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="generate-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl shadow-lg transform transition active:scale-95 flex items-center justify-center gap-2">
+                ✨ Generate Presentation
+            </button>
+        </section>
+
+        <section id="editor-view" class="hidden p-8 border-t border-gray-100 bg-gray-50">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Slide Editor</h2>
+                <button onclick="downloadPPT()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-full font-bold shadow-md">
+                    📥 Download .PPTX
+                </button>
+            </div>
+            <div id="slide-list" class="space-y-4">
+                </div>
+        </section>
+
+    </div>
+
+    <script type="module">
+        import { GoogleGenAI } from "@google/genai";
+
+        let slideContent = [];
+
+        document.getElementById('generate-btn').addEventListener('click', async () => {
+            const apiKey = document.getElementById('api-key').value;
+            const pdfFile = document.getElementById('pdf-input').files[0];
+            const start = document.getElementById('page-from').value;
+            const end = document.getElementById('page-to').value;
+
+            if (!apiKey || !pdfFile) return alert("Please provide both an API key and a PDF file!");
+
+            const btn = document.getElementById('generate-btn');
+            btn.disabled = true;
+            btn.innerHTML = `<span class="animate-spin">🌀</span> Reading Textbook...`;
+
+            try {
+                const genAI = new GoogleGenAI(apiKey);
+                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+                // Convert PDF to Base64
+                const base64PDF = await toBase64(pdfFile);
+
+                const prompt = `
+                    Act as an expert educator. Read pages ${start} to ${end} of this textbook.
+                    Create a presentation outline for children (age 10). 
+                    Generate between 8 to 12 slides.
+                    Each slide must have:
+                    - title: A catchy short title.
+                    - content: Exactly 3 bullet points of easy-to-understand info.
+                    - youtubeSearch: A specific search query for a 3-10 minute educational video.
+                    Return the result ONLY as a JSON array of objects.
+                `;
+
+                const result = await model.generateContent([
+                    { inlineData: { data: base64PDF, mimeType: "application/pdf" } },
+                    { text: prompt }
+                ]);
+
+                // Parse and Clean JSON
+                const rawText = result.response.text();
+                slideContent = JSON.parse(rawText.replace(/```json/g, "").replace(/```/g, ""));
+                
+                renderSlides();
+                document.getElementById('editor-view').classList.remove('hidden');
+                btn.innerHTML = "✨ Generate Presentation";
+                btn.disabled = false;
+
+            } catch (err) {
+                console.error(err);
+                alert("Error: " + err.message);
+                btn.disabled = false;
+                btn.innerHTML = "✨ Generate Presentation";
+            }
+        });
+
+        function toBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        window.renderSlides = function() {
+            const list = document.getElementById('slide-list');
+            list.innerHTML = slideContent.map((s, i) => `
+                <div class="bg-white p-6 rounded-2xl border-2 border-indigo-100 shadow-sm">
+                    <input class="w-full font-bold text-lg mb-2 p-1 border-b focus:outline-none" value="${s.title}" onchange="updateData(${i}, 'title', this.value)">
+                    <textarea class="w-full text-sm text-gray-600 h-20 p-1 bg-indigo-50/30 rounded" onchange="updateData(${i}, 'content', this.value)">${Array.isArray(s.content) ? s.content.join('\n') : s.content}</textarea>
+                    <div class="mt-2 text-xs text-indigo-500 font-mono">🎥 Video Query: ${s.youtubeSearch}</div>
+                </div>
+            `).join('');
+        }
+
+        window.updateData = function(index, field, value) {
+            slideContent[index][field] = value;
+        }
+
+        window.downloadPPT = function() {
+            let pptx = new PptxGenJS();
+            slideContent.forEach(slide => {
+                let s = pptx.addSlide();
+                s.background = { color: "F8FAFC" };
+                s.addText(slide.title, { x: 0.5, y: 0.5, w: 9, h: 1, fontSize: 32, bold: true, color: "4F46E5", align: "center" });
+                s.addText(slide.content, { x: 0.5, y: 1.8, w: 9, h: 3, fontSize: 18, color: "334155", bullet: true });
+                s.addText("Search YouTube: " + slide.youtubeSearch, { x: 0.5, y: 5, w: 9, h: 0.5, fontSize: 12, italic: true, color: "6366F1" });
+            });
+            pptx.writeFile({ fileName: "Gemini_Lesson.pptx" });
+        }
+    </script>
+</body>
+</html>
