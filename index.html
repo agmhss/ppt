@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini Lesson Creator</title>
+    <title>Gemini Slide Master v4</title>
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
     {
@@ -53,9 +54,14 @@
         <section id="editor-view" class="hidden p-8 bg-gray-50 border-t-4 border-indigo-100">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <h2 class="text-3xl font-bold text-gray-800 italic">✏️ Your Beautiful Slides</h2>
-                <button id="download-pdf-btn" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-2xl font-black text-xl shadow-lg">
-                    📄 DOWNLOAD PDF
-                </button>
+                <div class="flex gap-4">
+                    <button id="download-pptx-btn" class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-2xl font-black text-xl shadow-lg">
+                        📥 DOWNLOAD PPTX
+                    </button>
+                    <button id="download-pdf-btn" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-2xl font-black text-xl shadow-lg">
+                        📄 DOWNLOAD PDF
+                    </button>
+                </div>
             </div>
             <div id="slide-editor-container" class="space-y-8"></div>
         </section>
@@ -86,19 +92,17 @@
             status.className = "mt-4 p-4 rounded-xl text-center font-bold bg-blue-100 text-blue-800 text-lg";
             status.innerText = "📄 PDF loaded – sending to Gemini...";
 
-            let countdown = 90;
+            let countdown = 90; // max expected seconds
             const timer = setInterval(() => {
                 countdown--;
                 if (countdown > 0) {
-                    status.innerText = `⏳ Processing... Estimated time left: ${countdown}s`;
+                    status.innerText = `📄 Processing with Gemini... Estimated time left: ${countdown}s`;
                 }
             }, 1000);
 
             try {
                 const genAI = new GoogleGenerativeAI(key);
-
-                // Use latest stable flash model for text/slide generation
-                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Stable & reliable as of 2026
 
                 const reader = new FileReader();
                 reader.onload = async () => {
@@ -111,7 +115,7 @@
 For each slide, provide:
 - "title": short fun title
 - "bulletPoints": array of 3–5 short, simple bullet points
-- "imagePrompt": a detailed, vivid prompt for a colorful, fun, kid-friendly illustration that perfectly matches the slide content (e.g., "cartoon of happy kids exploring a volcano with lava and rocks, bright colors")
+- "imagePrompt": a detailed prompt for a colorful, kid-friendly illustration matching the slide content (e.g., "cartoon happy children learning about planets in space")
 
 Return ONLY pure valid JSON array of objects. No markdown, no extra text.`;
 
@@ -123,7 +127,7 @@ Return ONLY pure valid JSON array of objects. No markdown, no extra text.`;
                         clearInterval(timer);
 
                         const responseText = result.response.text();
-                        const cleaned = responseText.trim().replace(/^```json:disable-run
+                        const cleaned = responseText.trim().replace(/^```json\s*/i, '').replace(/\s*```$/g, '').trim();
 
                         finalSlides = JSON.parse(cleaned);
 
@@ -131,20 +135,21 @@ Return ONLY pure valid JSON array of objects. No markdown, no extra text.`;
                             throw new Error("No slides returned.");
                         }
 
-                        // Generate images using a dedicated image model
-                        status.innerText = "✅ Slides created! Generating beautiful images for each slide... (30–90s)";
-                        await generateImages(genAI);
-
                         renderEditor();
                         document.getElementById('setup-view').classList.add('hidden');
                         document.getElementById('editor-view').classList.remove('hidden');
 
                         status.className = "mt-4 p-4 rounded-xl text-center font-bold bg-green-100 text-green-800 text-lg";
-                        status.innerText = "🎉 All done! Your slides with images are ready.";
+                        status.innerText = "✅ Slides ready! Now adding beautiful images... (this may take 1–2 minutes)";
+                        
+                        // Add images sequentially
+                        await addImagesToSlides(genAI);
+
+                        status.className = "hidden";
                     } catch (err) {
                         clearInterval(timer);
                         console.error(err);
-                        alert("Error: " + (err.message || "Something went wrong during processing."));
+                        alert("Error processing response: " + err.message + "\nTry a smaller page range.");
                     } finally {
                         btn.disabled = false;
                         btn.innerText = "✨ CREATE MY LESSON!";
@@ -159,41 +164,33 @@ Return ONLY pure valid JSON array of objects. No markdown, no extra text.`;
             }
         };
 
-        async function generateImages(genAI) {
-            // Use the current image generation model (as of Jan 2026)
-            const imgModel = genAI.getGenerativeModel({ 
-                model: "gemini-2.5-flash-image",
-                generationConfig: { responseMimeType: "image/png" }
-            });
+        async function addImagesToSlides(genAI) {
+            const imgModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Can generate images
 
             for (let i = 0; i < finalSlides.length; i++) {
                 const slide = finalSlides[i];
                 if (!slide.imagePrompt) continue;
 
                 try {
-                    const imgResult = await imgModel.generateContent(
-                        "Generate a colorful, fun, kid-friendly illustration: " + slide.imagePrompt
-                    );
+                    const imgResult = await imgModel.generateContent([
+                        "Generate a colorful, fun, kid-friendly illustration based exactly on this prompt: " + slide.imagePrompt,
+                        { generationConfig: { responseMimeType: "image/png" } }
+                    ]);
 
-                    // Extract the first image part
-                    const imgPart = imgResult.response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-                    if (imgPart?.inlineData) {
-                        slide.imageData = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
-                    } else {
-                        slide.imageData = null;
+                    const imgPart = imgResult.response.candidates[0].content.parts[0].inlineData;
+                    if (imgPart) {
+                        slide.imageData = `data:${imgPart.mimeType};base64,${imgPart.data}`;
                     }
                 } catch (e) {
-                    console.warn(`Image failed for slide ${i+1}:`, e);
+                    console.warn(`Image generation failed for slide ${i+1}:`, e);
                     slide.imageData = null;
                 }
 
-                // Update preview live
+                // Update preview
                 const previewImg = document.getElementById(`preview-img-${i}`);
-                const placeholder = document.getElementById(`placeholder-${i}`);
                 if (previewImg && slide.imageData) {
                     previewImg.src = slide.imageData;
                     previewImg.classList.remove('hidden');
-                    if (placeholder) placeholder.classList.add('hidden');
                 }
             }
         }
@@ -212,9 +209,9 @@ Return ONLY pure valid JSON array of objects. No markdown, no extra text.`;
                             <textarea class="w-full h-48 p-4 bg-gray-50 rounded-2xl text-gray-800 text-lg focus:ring-4 focus:ring-indigo-200 outline-none resize-none" 
                                       oninput="finalSlides[${i}].bulletPoints = this.value.split('\\n').filter(l => l.trim())">${(s.bulletPoints || []).join('\n')}</textarea>
                         </div>
-                        <div class="flex flex-col items-center justify-center bg-gray-100 rounded-2xl overflow-hidden min-h-96">
-                            <p id="placeholder-${i}" class="text-gray-500 italic">Generating image...</p>
+                        <div class="flex items-center justify-center bg-gray-100 rounded-2xl overflow-hidden">
                             <img id="preview-img-${i}" src="${s.imageData || ''}" class="${s.imageData ? '' : 'hidden'} w-full h-full object-contain" alt="Slide illustration">
+                            <p class="${s.imageData ? 'hidden' : ''} text-gray-500 italic">Image generating...</p>
                         </div>
                     </div>
                 </div>
@@ -227,30 +224,69 @@ Return ONLY pure valid JSON array of objects. No markdown, no extra text.`;
             return div.innerHTML;
         }
 
-        // PDF Download (browser print → Save as PDF)
+        // Fixed PPTX Download
+        document.getElementById('download-pptx-btn').onclick = () => {
+            let pptx = new PptxGenJS();
+            pptx.defineLayout({ name: 'A4', width: 10, height: 7.5 });
+
+            finalSlides.forEach(s => {
+                let slide = pptx.addSlide();
+                slide.background = { color: "F0F9FF" };
+
+                // Title
+                slide.addText(s.title || "Slide", {
+                    x: 0.5, y: 0.3, w: 9, h: 1,
+                    fontSize: 36, bold: true, color: "1E40AF", align: "center"
+                });
+
+                // Bullets
+                const bullets = (s.bulletPoints || []).filter(b => b.trim());
+                if (bullets.length > 0) {
+                    slide.addText(bullets.map(b => `• ${b}`), {
+                        x: 0.8, y: 1.8, w: 5, h: 4,
+                        fontSize: 22, color: "334155", bullet: true
+                    });
+                }
+
+                // Image (if generated)
+                if (s.imageData) {
+                    slide.addImage({
+                        data: s.imageData,
+                        x: 6, y: 1.5, w: 4, h: 4,
+                        sizing: { type: 'contain', w: 4, h: 4 }
+                    });
+                }
+
+                // Footer note
+                slide.addText("Created with ❤️ by Lesson AI Explorer", {
+                    x: 0.5, y: 6.8, w: 9, h: 0.4,
+                    fontSize: 10, color: "888888", align: "center", italic: true
+                });
+            });
+
+            pptx.writeFile({ fileName: "My_Kid_Friendly_Lesson.pptx" });
+        };
+
+        // PDF Fallback (using browser print)
         document.getElementById('download-pdf-btn').onclick = () => {
-            // Hide editor temporarily
+            document.getElementById('setup-view').classList.add('hidden');
             document.getElementById('editor-view').classList.add('hidden');
 
             const printContainer = document.createElement('div');
             printContainer.style.padding = '40px';
             printContainer.style.background = 'white';
-            printContainer.style.fontFamily = 'sans-serif';
 
             finalSlides.forEach((s, i) => {
                 const page = document.createElement('div');
                 page.style.pageBreakAfter = 'always';
-                page.style.marginBottom = '80px';
-                page.style.maxWidth = '900px';
-                page.style.margin = '0 auto';
-
+                page.style.marginBottom = '60px';
                 page.innerHTML = `
-                    <h1 style="font-size: 48px; color: #1E40AF; text-align: center; margin-bottom: 40px;">${escapeHtml(s.title || 'Untitled')}</h1>
-                    ${s.imageData ? `<div style="text-align: center; margin: 40px 0;"><img src="${s.imageData}" style="max-width: 80%; max-height: 500px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);"></div>` : ''}
-                    <ul style="font-size: 32px; line-height: 1.8; max-width: 800px; margin: 0 auto; padding-left: 60px;">
+                    <h1 style="font-size: 40px; color: #1E40AF; text-align: center; margin-bottom: 30px;">${escapeHtml(s.title)}</h1>
+                    ${s.imageData ? `<img src="${s.imageData}" style="width: 80%; max-height: 400px; display: block; margin: 30px auto; border-radius: 20px;">` : ''}
+                    <ul style="font-size: 28px; line-height: 1.8; max-width: 800px; margin: 0 auto;">
                         ${(s.bulletPoints || []).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
                     </ul>
-                    <div style="text-align: center; margin-top: 80px; color: #888; font-size: 18px;">Slide ${i+1} • Created with Lesson AI Explorer</div>
+                    <div style="text-align: center; margin-top: 50px; color: #888; font-size: 16px;">Slide ${i+1} • Created with Lesson AI Explorer</div>
                 `;
                 printContainer.appendChild(page);
             });
@@ -259,7 +295,6 @@ Return ONLY pure valid JSON array of objects. No markdown, no extra text.`;
             window.print();
             document.body.removeChild(printContainer);
 
-            // Show editor again
             document.getElementById('editor-view').classList.remove('hidden');
         };
     </script>
