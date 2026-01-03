@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini Slide Master v2</title>
+    <title>Gemini Slide Master v3</title>
     <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
@@ -76,7 +76,6 @@
             if (!key) return alert("Please paste your Gemini API key!");
             if (!file) return alert("Please select a PDF file!");
 
-            // Default pages if not specified
             if (!start) start = "1";
             if (!end) end = "10";
 
@@ -88,14 +87,16 @@
 
             try {
                 const genAI = new GoogleGenerativeAI(key);
-                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+                // Updated to the latest fast model as of 2026: gemini-2.5-flash (faster, better PDF understanding)
+                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
                 const reader = new FileReader();
                 reader.onload = async () => {
                     try {
                         status.classList.remove('hidden');
                         status.className = "mt-4 p-4 rounded-xl text-center font-bold bg-blue-100 text-blue-800";
-                        status.innerText = "📄 PDF loaded – sending to Gemini (this may take 30–60 seconds)...";
+                        status.innerText = "📄 PDF loaded successfully – sending to Gemini (this may take 30–90 seconds)...";
 
                         const base64Data = reader.result.split(',')[1];
 
@@ -107,7 +108,7 @@ Return ONLY a valid JSON array of objects with exactly these fields:
 - "bulletPoints": array of 3–5 short strings (bullet points)
 - "youtubeSearch": string (suggested YouTube search term for a related kid-friendly video)
 
-Do not include any extra text, markdown, or code blocks.`;
+Do not include any extra text, explanations, markdown, or code blocks. Output pure JSON only.`;
 
                         const result = await model.generateContent([
                             {
@@ -121,23 +122,27 @@ Do not include any extra text, markdown, or code blocks.`;
 
                         const responseText = result.response.text();
 
-                        // Clean possible markdown wrappers
-                        const cleaned = responseText.trim().replace(/^```json\n?|```$/gi, '').trim();
+                        // Robust cleaning of possible wrappers
+                        const cleaned = responseText.trim()
+                            .replace(/^```json\s*/i, '')
+                            .replace(/\s*```$/g, '')
+                            .trim();
 
                         finalSlides = JSON.parse(cleaned);
 
                         if (!Array.isArray(finalSlides) || finalSlides.length === 0) {
-                            throw new Error("No slides generated – response format invalid.");
+                            throw new Error("Generated slides array is empty or invalid.");
                         }
 
                         renderEditor();
                         document.getElementById('setup-view').classList.add('hidden');
                         document.getElementById('editor-view').classList.remove('hidden');
 
-                        status.classList.add('hidden');
+                        status.className = "mt-4 p-4 rounded-xl text-center font-bold bg-green-100 text-green-800";
+                        status.innerText = "✅ Slides generated successfully! You can now edit and download.";
                     } catch (parseErr) {
                         console.error(parseErr);
-                        alert("Gemini processed the PDF but returned invalid JSON. Try again or adjust page range.\n\nDetails: " + parseErr.message);
+                        alert("Gemini read the PDF but the response wasn't valid JSON. This can happen with complex PDFs.\n\nTry:\n• Reducing the page range\n• Using a simpler PDF\n• Trying again\n\nError: " + parseErr.message);
                     } finally {
                         btn.disabled = false;
                         btn.innerText = "✨ CREATE MY LESSON!";
@@ -145,7 +150,7 @@ Do not include any extra text, markdown, or code blocks.`;
                 };
 
                 reader.onerror = () => {
-                    alert("Error reading PDF file.");
+                    alert("Error reading the PDF file.");
                     btn.disabled = false;
                     btn.innerText = "✨ CREATE MY LESSON!";
                 };
@@ -153,7 +158,7 @@ Do not include any extra text, markdown, or code blocks.`;
                 reader.readAsDataURL(file);
             } catch (err) {
                 console.error(err);
-                alert("Error: " + (err.message || "Unknown error – check API key or network."));
+                alert("API Error: " + (err.message || "Check your API key, network, or try a different model."));
                 btn.disabled = false;
                 btn.innerText = "✨ CREATE MY LESSON!";
             }
